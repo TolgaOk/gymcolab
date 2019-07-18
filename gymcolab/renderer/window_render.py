@@ -10,62 +10,85 @@ import threading
 
 
 class WindowRenderer():
-    """ Tkinter based GUI renderer.
+    """ Tkinter based GUI renderer. Each frame is rendered using cells. These
+    cells are colored based on the croppers. Cropper objects provide
+    observations from the game to render. These croppers can crop the whole
+    game in which there is no cropping or scrolly croppers that follows a
+    sprite. Frames from the croppers are colored based on the <colors>
+    argument. Before the fist call of the renderer GUI window does not pop up.
+    Therefore it can be initialized even if it won't be used without poping up
+    the window.
+    Arguments:
+        - cell_size: Size of each cell in terms of pixel
+        - colors: Color dictionary to map each character to its corresponding
+            color. If a character is not defined in the dictionary the default
+            color is used.
+        - croppers: List of cropper objects to be rendered.
+        - border_ration: Ratio of the empty space at the border to the cell
+            size
     """
     DEFAULT_COLOR = "#CCCCCC"
 
-    def __init__(self, width, height, colors, border_ratio=0.05):
+    def __init__(self, cell_size, colors, croppers, border_ratio=0.05):
         self.root = tkinter.Tk()
-        self.root.title("GridEnv")
+        self.root.title("gymcolab")
+
+        self.croppers = sorted(croppers, key=lambda x: x.rows, reverse=True)
+        width = ((sum(cropper.cols for cropper in croppers) +
+                  len(croppers) - 1) * cell_size)
+        height = max(cropper.rows for cropper in croppers) * cell_size
+
         self.canvas = tkinter.Canvas(
             self.root, width=width, height=height, bg="gray")
         self.canvas.pack()
         self.canvas_height = height
         self.canvas_widht = width
+        self.cell_size = cell_size
 
-        self.boarder_ratio = border_ratio
+        self.border_ratio = border_ratio
         self.colors = defaultdict(lambda: DEFAULT_COLOR)
         for key, value in colors.items():
             self.colors[ord(key)] = value
 
-    def _init_render(self, board):
-        height, width = board.shape
-        cell_width = self.canvas_widht//width
-        cell_height = self.canvas_height//height
+    def _init_render(self):
+        """ Initialize the renderer and pop ups the window. Create each cell
+        in each croppers. While doing so leaving a single cell sized gap
+        between the cells of different croppers.
+        Return:
+            - List of cell for all croppers.
+        """
+        cell_list = []
+        global_col = 0
+        for cropper in self.croppers:
+            rows = cropper.rows
+            cols = cropper.cols
 
-        rows = self.canvas_height//cell_height
-        cols = self.canvas_widht//cell_width
+            b_w = int(self.cell_size*self.border_ratio)
+            b_h = int(self.cell_size*self.border_ratio)
 
-        b_w = int(cell_width*self.boarder_ratio)
-        b_h = int(cell_height*self.boarder_ratio)
+            cells = [self.canvas.create_rectangle(x*self.cell_size + b_w,
+                                                  y*self.cell_size + b_h,
+                                                  (x+1)*self.cell_size - b_w,
+                                                  (y+1)*self.cell_size - b_h)
+                     for x, y in product(range(global_col, cols + global_col),
+                                         range(rows))]
+            cell_list.append(cells)
+            global_col += (1 + cropper.cols)
+        return cell_list
 
-        cells = [self.canvas.create_rectangle(x*cell_width + b_w,
-                                              y*cell_height + b_h,
-                                              (x+1)*cell_width - b_w,
-                                              (y+1)*cell_height - b_h)
-                 for x, y in product(range(cols), range(rows))]
-        return cells
-
-    def render(self, board):
+    def __call__(self, board):
+        """ Render the board using croppers.
+            Raise:
+                - Attrubute Error: If the renderer is not initialized using
+                    <_init_render> function
+        """
         try:
-            self.cells
+            self.cell_list
         except AttributeError:
-            self.cells = self._init_render(board)
+            self.cell_list = self._init_render()
 
-        for i, v in enumerate(board.flatten("F")):
-            self.canvas.itemconfig(self.cells[i], fill=self.colors[v])
+        for cropper, cells in zip(self.croppers, self.cell_list):
+            cropped_board = cropper.crop(board).board
+            for i, v in enumerate(cropped_board.flatten("F")):
+                self.canvas.itemconfig(cells[i], fill=self.colors[v])
         self.root.update()
-
-
-if __name__ == "__main__":
-    COLORS = {
-        0: "#BB33CC",
-        1: "#22CC66",
-        2: "#CC4499"
-    }
-    renderer = WindowRenderer(800, 800, COLORS)
-    X, Y = np.meshgrid(np.linspace(-2, 2, 20), np.linspace(-2, 2, 20))
-    for i in range(10000):
-        Z = np.sin((X**2 + Y**2)*((i % 100)/50))
-        Z = np.digitize(Z, [-0.4, 0.4])
-        renderer.render(Z)

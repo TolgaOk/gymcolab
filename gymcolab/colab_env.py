@@ -1,123 +1,150 @@
 """ Abstract class for Gym Colab environments. Include commom utilities.
 """
 from itertools import chain
-from gym import spaces
 import numpy as np
+import gym
+from gym import spaces
 from pycolab import cropping
 from pycolab.rendering import ObservationToFeatureArray
 
+from gymcolab.renderer.window_render import WindowRenderer
+
 
 class ColabEnv(gym.Env):
+    """ Base class for the pycolab gym environments.
 
+        Environments can be build on top of this class given that the
+        <_init_game> method is defined where the game is constructed. There
+        are two sets of croppers one for renderer and the other for
+        observation. Renderer croppers are only for visualization while
+        observation cropper is what the environment returns after applying
+        feature mapping. The default feature mapping is observation to 3D
+        tensor where each frame is a mask for the corresponding character
+        from the world map.
+        Arguments:
+            - render_croppers: List of croppers for visualization purposes
+                only (default: No cropping)
+            - observation_cropper: A cropper for cropping observation to
+                transform the state (defualt: No cropping)
+            - n_actions: Number of discrete actions (default: 5, for north,
+                west, eath, south and no-ops)
+            - (remaining kwargs): Renderer keyword arguments
+    """
     metadata = {
+        # Only GUI is available right now
         "render.modes": ["plot", "gui", "console"],
+        # Only cropped-map is available right now
         "obs.modes": ["onehot", "index", "cropped-map"]
     }
 
     def __init__(self,
-                 game,
-                 character_colors=None,
-                 render_cropers=None,
-                 observation_cropper=None):
+                 render_croppers=None,
+                 observation_cropper=None,
+                 n_actions=5,
+                 **renderer_kwargs):
 
-        if render_cropers is None:
-            self._render_cropers = [cropping.ObservationCropper()]
+        if render_croppers is None:
+            render_croppers = [cropping.ObservationCropper()]
+        self.render_croppers = render_croppers
 
         if observation_cropper is None:
-            self._observation_cropper = cropping.ObservationCropper()
+            observation_cropper = cropping.ObservationCropper()
+        self.observation_cropper = observation_cropper
 
+        # Initialize the game inorder to get characters of the game
+        game = self._init_game()
+        self.observation_cropper.set_engine(game)
         chars = set(game.things.keys()).union(game._backdrop.palette)
 
-        # # We need to create observation and action spaces, we call
-        # # <its_showtime> method and take the observation after cropping
-        # #  it just to find out the depth.
+        # Observation space is a 3D space where the depth is the number of
+        # unqiue characters in the game map where as spatial dimensions are
+        # number of rows and columns of the observation cropeer
+        # (default: whole map).
+        self.observation_space = spaces.Box(
+            low=0,
+            high=1,
+            shape=(len(chars),
+                   self.observation_cropper.rows,
+                   self.observation_cropper.cols)
+        )
+        # Action space is a simple discrete space with 5 actions including
+        # moving left, right, up, down, and no-ops
+        self.action_space = spaces.Discrete(n_actions)
+        self.to_feature = ObservationToFeatureArray(chars)
+        # Define game atribute as None to check if reset is called before step
+        self.game = None
+        self._renderer = None
+        self.renderer_kwargs = renderer_kwargs
 
-        # observation, _, _ = game.its_showtime()
-        # depth = len(observation.layers.keys())
-        self.observation_space = spaces.Box(low=0, high=1, shape=(len(chars),
-            self._observation_cropper.rows, self._observation_cropper.cols))
+    def step(self, action):
+        """ Iterate the environment for one time step. Gym step function.
+        Arguments:
+            - action: Discerte action as integer.
+        Raise:
+            - assertion, If the given argument <action> is not an integer
+            - assertion, If the given argument <action> is out of range
+            - assertion, If <step> function is called before initial <reset>
+                call
+            - assertion, If <step> function is called after the termination
+        Return:
+            - cropped and mapped observation
+            - immidiate reward
+            - termination
+            - info dictionary
+        """
+        n_act = self.action_space.n
+        assert isinstance(action, int), ("Parameter <action> must be integer. "
+                                         "Try using <.item()> or squeeze down "
+                                         "the action.")
+        assert action in range(n_act), ("Parameter action is out of range. "
+                                        "<action> must be in range of "
+                                        "{}".format(n_act))
+        assert self.game is not None, ("Game is not initialized"
+                                       "Call reset function before step")
+        assert self._done is False, ("Step can not be called after the game "
+                                     "is terminated. Try calling reset first")
 
-        
+        observation, reward, discount = self.game.play(action)
+        done = self.game.game_over
+        self.observation = observation
+        return self.observation_wrapper(observation), reward, done, {}
 
-class ObservaionToIndex():
-    pass
+    def reset(self):
+        """ Initialize the game and set croppers at every call. ALso at the
+        fist call initialize renderer.
+        Return:
+            - cropped and mapped observation
+        """
+        self.game = self._init_game()
+        observation, reward, discount = self.game.its_showtime()
+        self._done = self.game.game_over
 
+        self.observation_cropper.set_engine(self.game)
+        for cropper in self.render_croppers:
+            cropper.set_engine(self.game)
 
-class OnbservationToOnehot():
-    pass
+        if self._renderer is None:
+            self._renderer = WindowRenderer(
+                croppers=self.render_croppers, **self.renderer_kwargs)
+        self.observation = observation
+        return self.observation_wrapper(observation)
 
+    def observation_wrapper(self, observation):
+        """ Crop and map the observation using observation mapping function.
+        """
+        observation = self.observation_cropper.crop(observation)
+        return self.to_feature(observation)
 
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-   class Observation:
-        def __init__(self, game):
-            self.characters = list(chain(game.things.keys(),
-                                         list(game.backdrop.palette)))
-            self.row, self.col = game.rows, game.cols
-            self._game = game
+    def render(self):
+        """ Render the last observation using renderer croppers.
+            Raise:
+                assertion, If <reset> function is not called initially
+        """
+        assert self._renderer is not None, ("Game is not initialized"
+                                            "Call reset function before step")
+        self._renderer(self.observation)
 
-        def to_map(self, board):
-            chr_indx = np.array([ord(char) for char in self.characters])
-            feature_map = np.expand_dims(
-                board, 0) == chr_indx.reshape(-1, 1, 1)
-            return feature_map
-
-        def to_onehot(self, row, col):
-            indexes = np.arange(self.row * self.col)
-            return (indexes == ((row * self.col) + col)).astype("float32")
-
-        def to_cropped_map(self, board, kernel_size, row, col):
-            board_h, board_w = board.shape
-            chr_indx = np.array([ord(char) for char in self.characters])
-            kernel = np.zeros((len(chr_indx), kernel_size,
-                               kernel_size), dtype="float32")
-
-            x_lower = min(0, col - kernel_size//2)
-            y_lower = min(0, row - kernel_size//2)
-            x_upper = max(board_w, col + (kernel_size - kernel_size//2))
-            y_upper = max(board_h, row + (kernel_size - kernel_size//2))
-
-            kernel_board = board[y_lower:y_upper, x_lower:x_upper]
-            kernel_board = np.expand_dims(kernel_board, 0)
-
-            feature_map = kernel_board == chr_indx.reshape(-1, 1, 1)
-
-            kernel_offset_x_lower = x_lower - (col - kernel_size//2)
-            kernel_offset_y_lower = y_lower - (row - kernel_size//2)
-            kernel_offset_x_upper = col + \
-                (kernel_size - kernel_size//2) - x_upper
-            kernel_offset_y_upper = row + \
-                (kernel_size - kernel_size//2) - y_upper
-
-            kernel[kernel_offset_x_lower:kernel_offset_x_upper,
-                   kernel_offset_y_lower:kernel_offset_y_upper] = feature_map
-            return kernel
-
-        def get_map_observation_space(self):
-            return spaces.Box(low=0, high=1,
-                              shape=(len(self.characters),
-                                     self.row, self.col),
-                              dtype=np.float32)
-
-        def get_cropped_map_observation_space(self, kernel_size):
-            return spaces.Box(low=0, high=1,
-                              shape=(len(self.characters),
-                                     kernel_size, kernel_size))
-
-        def get_onehot_observation_space(self):
-            spaces.Box(low=0, high=1, shape=(self.row*self.col))
+    def _init_game(self):
+        """ This function need to be overwritten from the child environment class
+        """
+        raise NotImplementedError
