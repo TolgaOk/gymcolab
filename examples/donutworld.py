@@ -6,8 +6,9 @@ if __name__ == "__main__":
     env = DonutWorld()
     state = env.reset()
     for i in range(5000):
-        _, reward, done, _ = env.step(np.random.randint(5))
+        state, reward, done, _ = env.step(np.random.randint(5))
         env.render()
         if done:
             env.reset()
             print(reward, done)
+        print(state.shape)

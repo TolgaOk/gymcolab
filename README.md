@@ -1,9 +1,14 @@
-## Grid Environment
+## GymColab
 
-Grid world based on [pycolab](https://github.com/deepmind/pycolab) game engine. Grid environment provides visualization and analysis tools for reinforcement learning research.
+2D gym environments based on [pycolab](https://github.com/deepmind/pycolab) game engine. Grid environment provides visualization and analysis tools for reinforcement learning research. Visualizations are based on cropper objects of the pycolab.
+
+**Note**: Project under development!
 
 ### Install
+``` cd gymcolab ```
+
+``` pip install -e .```
 
 ### Example World
-    - Fully observable environments
-    - Partially observable environments
+    - Pycolab examples
+    - DonutWorld
