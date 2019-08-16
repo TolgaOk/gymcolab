@@ -113,7 +113,7 @@ class DonutWorld(ColabEnv):
         "#": "#989898"
     }
 
-    def __init__(self, size=13, cell_size=20, colors=None,
+    def __init__(self, size=31, cell_size=10, colors=None,
                  render_croppers=None):
         self.world_map = make_donut_map(size)
         super().__init__(cell_size=cell_size,

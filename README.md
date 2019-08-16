@@ -11,6 +11,6 @@
 
 ``` pip install -e .```
 
-### Example World
+### Example Worldz
     - Pycolab examples
     - DonutWorld

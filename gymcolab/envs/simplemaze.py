@@ -23,6 +23,22 @@ WORLDMAP = ["##########",
             "#P       #",
             "##########"]
 
+ROOMWORLD = ["################",
+             "#       #      #",
+             "#       #      #",
+             "#       #  P   #",
+             "#              #",
+             "#       #      #",
+             "#       #      #",
+             "### ######## ###",
+             "#       #      #",
+             "#       #      #",
+             "#       #      #",
+             "#  @           #",
+             "#       #      #",
+             "#       #      #",
+             "################"]
+
 
 class PlayerSprite(sprites.MazeWalker):
     """ Sprite of the agent that terminates the environment for a counter
@@ -59,15 +75,25 @@ class CashDrape(pycolab.things.Drape):
     This Drape detects when a player traverses a coin, removing the coin and
     crediting the player for the collection. Terminates if all coins are gone.
     """
+    def __init__(self, curtain, character):
+        super().__init__(curtain, character)
+        self.env_length = 200
 
     def update(self, actions, board, layers, backdrop, things, the_plot):
         player_pattern_position = things['P'].position
 
-        if self.curtain[player_pattern_position]:
-            the_plot.add_reward(1)
-            self.curtain[player_pattern_position] = False
-            if not self.curtain.any():
-                the_plot.terminate_episode()
+        if self.env_length <= 0:
+            self.env_length = 200
+            the_plot.terminate_episode()
+        else:
+            if self.curtain[player_pattern_position]:
+                the_plot.add_reward(1)
+                self.curtain[player_pattern_position] = False
+                if not self.curtain.any():
+                    the_plot.terminate_episode()
+            else:
+                the_plot.add_reward(-1)
+                self.env_length -= 1
 
 
 class SimpleMaze(ColabEnv):
@@ -117,7 +143,8 @@ if __name__ == "__main__":
     env = SimpleMaze(render_croppers=croppers)
     for i in range(100):
         done = False
-        env.reset()
+        state = env.reset()
+        print(state.shape)
         while not done:
             action = random.randint(0, 4)
             state, reward, done, _ = env.step(action)
