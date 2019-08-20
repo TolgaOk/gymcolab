@@ -54,11 +54,12 @@ class ColabEnv(gym.Env):
         # Initialize the game inorder to get characters of the game
         game = self._init_game()
         self.observation_cropper.set_engine(game)
-        chars = set(game.things.keys()).union(game._backdrop.palette)
+        # chars = set(game.things.keys()).union(game._backdrop.palette)
+        chars = sorted(set(game.things.keys()))
 
         # Observation space is a 3D space where the depth is the number of
         # unqiue characters in the game map where as spatial dimensions are
-        # number of rows and columns of the observation cropeer
+        # number of rows and columns of the observation croper
         # (default: whole map).
         self.observation_space = spaces.Box(
             low=0,

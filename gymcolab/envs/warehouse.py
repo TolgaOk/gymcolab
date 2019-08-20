@@ -157,7 +157,7 @@ class Warehouse(ColabEnv):
 
 if __name__ == "__main__":
     env = Warehouse(pairing=PAIRING, worldmap=WORLDMAP)
-    for i in range(100):
+    for i in range(800):
         done = False
         state = env.reset()
         while not done:
