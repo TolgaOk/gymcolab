@@ -13,19 +13,19 @@ from pycolab.ascii_art import Partial
 from gymcolab.colab_env import ColabEnv
 
 WORLDMAP = ["##########",
-            "#     b  #",
-            "#   b    #",
+            "#     B  #",
             "#        #",
-            "#      B #",
             "#        #",
-            "#     c  #",
+            "#    P   #",
+            "#      b #",
             "#        #",
-            "#   P    #",
+            "#        #",
+            "#        #",
             "##########"]
 PAIRING = {
-    "B": {"b", "c"},
+    "B": ["b"],
 }
-ENV_LENGTH = 2000
+ENV_LENGTH = 100
 PENALTY = -0.1
 REWARD = 3.0
 
@@ -133,10 +133,10 @@ class Warehouse(ColabEnv):
         "#": "#989898"
     }
 
-    def __init__(self, pairing, worldmap, cell_size=20, colors=None,
+    def __init__(self, pairing=None, worldmap=None, cell_size=40, colors=None,
                  render_croppers=None):
-        self.world_map = worldmap
-        self.pairing = pairing
+        self.world_map = worldmap or WORLDMAP
+        self.pairing = pairing or PAIRING
         super().__init__(cell_size=cell_size,
                          colors=colors or self.COLORS,
                          render_croppers=render_croppers)
@@ -148,10 +148,9 @@ class Warehouse(ColabEnv):
             sprites={"P": Partial(PlayerSprite)},
             drapes={"#": Partial(WallDrape),
                     "b": Partial(BallDrape),
-                    "c": Partial(BallDrape),
                     "B": Partial(BucketDrape, self.pairing)},
-            update_schedule=[["P"], ["b"], ["c"], ["B"], ["#"]],
-            z_order="PbcB#"
+            update_schedule=[["P"], ["b"], ["B"], ["#"]],
+            z_order="PbB#"
         )
         return game
 
@@ -166,7 +165,7 @@ if __name__ == "__main__":
             state, reward, done, _ = env.step(action)
             env.render()
             print(reward, done)
-            time.sleep(0.01)
+            time.sleep(0.1)
             if done:
                 print("Done")
                 break
