@@ -74,7 +74,6 @@ class ColabEnv(gym.Env):
         self.to_feature = ObservationToFeatureArray(chars)
         # Define game atribute as None to check if reset is called before step
         self.game = None
-        self._renderer = None
         self.renderer_kwargs = renderer_kwargs
 
     def step(self, action):
@@ -121,12 +120,10 @@ class ColabEnv(gym.Env):
         self._done = self.game.game_over
 
         self.observation_cropper.set_engine(self.game)
+        self._renderer = None
         for cropper in self.render_croppers:
             cropper.set_engine(self.game)
 
-        if self._renderer is None:
-            self._renderer = WindowRenderer(
-                croppers=self.render_croppers, **self.renderer_kwargs)
         self.observation = observation
         return self.observation_wrapper(observation)
 
@@ -141,8 +138,11 @@ class ColabEnv(gym.Env):
             Raise:
                 assertion, If <reset> function is not called initially
         """
-        assert self._renderer is not None, ("Game is not initialized"
-                                            "Call reset function before step")
+        assert self.game is not None, ("Game is not initialized"
+                                       "Call reset function before step")
+        if self._renderer is None:
+            self._renderer = WindowRenderer(
+                croppers=self.render_croppers, **self.renderer_kwargs)
         self._renderer(self.observation)
 
     def _init_game(self):
