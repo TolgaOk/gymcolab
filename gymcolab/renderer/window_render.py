@@ -46,7 +46,7 @@ class WindowRenderer():
         self.cell_size = cell_size
 
         self.border_ratio = border_ratio
-        self.colors = defaultdict(lambda: DEFAULT_COLOR)
+        self.colors = defaultdict(lambda: self.DEFAULT_COLOR)
         for key, value in colors.items():
             self.colors[ord(key)] = value
 
@@ -92,3 +92,6 @@ class WindowRenderer():
             for i, v in enumerate(cropped_board.flatten("F")):
                 self.canvas.itemconfig(cells[i], fill=self.colors[v])
         self.root.update()
+
+    def __del__():
+        self.root.destroy()

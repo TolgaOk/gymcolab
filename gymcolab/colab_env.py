@@ -115,12 +115,13 @@ class ColabEnv(gym.Env):
         Return:
             - cropped and mapped observation
         """
+        if self.game is None:
+            self._renderer = None
         self.game = self._init_game()
         observation, reward, discount = self.game.its_showtime()
         self._done = self.game.game_over
 
         self.observation_cropper.set_engine(self.game)
-        self._renderer = None
         for cropper in self.render_croppers:
             cropper.set_engine(self.game)
 
