@@ -84,6 +84,7 @@ class CashDrape(pycolab.things.Drape):
 
         if self.env_length <= 0:
             self.env_length = 200
+            the_plot.add_reward(-1)
             the_plot.terminate_episode()
         else:
             if self.curtain[player_pattern_position]:
