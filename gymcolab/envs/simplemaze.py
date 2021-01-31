@@ -93,7 +93,7 @@ class CashDrape(pycolab.things.Drape):
                 if not self.curtain.any():
                     the_plot.terminate_episode()
             else:
-                the_plot.add_reward(-1)
+                the_plot.add_reward(0)
                 self.env_length -= 1
 
 
@@ -130,7 +130,7 @@ class SimpleMaze(ColabEnv):
             drapes={"#": Partial(WallDrape),
                     "@": Partial(CashDrape)},
             update_schedule=[["P"], ["#"], ["@"]],
-            z_order="#P@"
+            z_order="#@P"
         )
         return game
 
