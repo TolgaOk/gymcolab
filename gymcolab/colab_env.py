@@ -7,7 +7,8 @@ from gym import spaces
 from pycolab import cropping
 from pycolab.rendering import ObservationToFeatureArray
 
-from gymcolab.renderer.window_render import WindowRenderer
+from gymcolab.renderer.window import WindowRenderer
+from gymcolab.renderer.jupyter import CanvasRenderer
 
 
 class ColabEnv(gym.Env):
@@ -134,7 +135,7 @@ class ColabEnv(gym.Env):
         observation = self.observation_cropper.crop(observation)
         return self.to_feature(observation)
 
-    def render(self):
+    def render(self, mode="gui"):
         """ Render the last observation using renderer croppers.
             Raise:
                 assertion, If <reset> function is not called initially
@@ -142,9 +143,21 @@ class ColabEnv(gym.Env):
         assert self.game is not None, ("Game is not initialized"
                                        "Call reset function before step")
         if self._renderer is None:
-            self._renderer = WindowRenderer(
-                croppers=self.render_croppers, **self.renderer_kwargs)
+            if mode == "gui":
+                self._renderer = WindowRenderer(
+                    croppers=self.render_croppers, **self.renderer_kwargs)
+            elif mode == "jupyter":
+                self._renderer = CanvasRenderer(
+                    croppers=self.render_croppers, **self.renderer_kwargs)
         self._renderer(self.observation)
+
+    
+    def init_render(self):
+        """ Display Canvas object. Only use within a Jupyter notebook.
+        """
+        self.reset()
+        self.render(mode="jupyter")
+        return self._renderer.canvas
 
     def _init_game(self):
         """ This function need to be overwritten from the child environment class
