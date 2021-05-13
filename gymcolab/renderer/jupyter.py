@@ -31,7 +31,7 @@ class CanvasRenderer():
                   len(croppers) - 1) * cell_size)
         height = max(cropper.rows for cropper in croppers) * cell_size
 
-        self.canvas = Canvas(height=height*cell_size, width=width*cell_size)
+        self.canvas = Canvas(height=height, width=width)
         self.border_ratio = border_ratio
         self.colors = defaultdict(lambda: self.DEFAULT_COLOR)
         for key, value in colors.items():
